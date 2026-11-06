@@ -1,0 +1,43 @@
+{
+  "config": {
+    "games": 10000,
+    "seed": "baseline-20261106",
+    "strategies": [
+      "greedy",
+      "greedy"
+    ]
+  },
+  "completed": 10000,
+  "wins": [
+    5033,
+    4965
+  ],
+  "draws": 2,
+  "rounds": 45010,
+  "fiveRoundGames": 5935,
+  "roundDraws": 36,
+  "transitions": 34982,
+  "previousWinnerWins": 15118,
+  "previousWinnerDraws": 23,
+  "firstStarterWins": 4966,
+  "firstStarterDraws": 2,
+  "handCounts": [
+    0,
+    1612,
+    8240,
+    27779,
+    2768,
+    9895,
+    11450,
+    24282,
+    3317,
+    677
+  ],
+  "actionCounts": {
+    "absorb": 127117,
+    "swap": 114917,
+    "discard": 90020
+  },
+  "assertionFailures": 0,
+  "durationMs": 74173.9289
+}

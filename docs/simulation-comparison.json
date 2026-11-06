@@ -1,0 +1,43 @@
+{
+  "config": {
+    "games": 1000,
+    "seed": "compare-20261106",
+    "strategies": [
+      "greedy",
+      "strategic"
+    ]
+  },
+  "completed": 1000,
+  "wins": [
+    519,
+    481
+  ],
+  "draws": 0,
+  "rounds": 4480,
+  "fiveRoundGames": 589,
+  "roundDraws": 3,
+  "transitions": 3477,
+  "previousWinnerWins": 1522,
+  "previousWinnerDraws": 2,
+  "firstStarterWins": 487,
+  "firstStarterDraws": 0,
+  "handCounts": [
+    0,
+    157,
+    857,
+    2881,
+    300,
+    881,
+    1094,
+    2428,
+    306,
+    56
+  ],
+  "actionCounts": {
+    "absorb": 14808,
+    "swap": 10871,
+    "discard": 8960
+  },
+  "assertionFailures": 0,
+  "durationMs": 7798.229600000001
+}
