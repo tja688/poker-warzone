@@ -223,7 +223,11 @@ function FieldStrip({
               <div className="field-caption">
                 <span>
                   <b>{i + 1}</b>{" "}
-                  {active ? "战区" : f.kind === "control" ? "控制区" : "普通区"}
+                  {active && game.phase === "play"
+                    ? "战区"
+                    : f.kind === "control"
+                      ? "控制区"
+                      : "普通区"}
                 </span>
                 {f.kind === "control" && !active && <ShieldCheck size={12} />}
               </div>
@@ -232,8 +236,20 @@ function FieldStrip({
               >
                 {active ? (
                   <div className="battle-marker">
-                    <Swords size={20} />
-                    <span>交战中</span>
+                    {game.phase === "play" ? (
+                      <Swords size={20} />
+                    ) : f.kind === "control" ? (
+                      <ShieldCheck size={20} />
+                    ) : (
+                      <RotateCcw size={20} />
+                    )}
+                    <span>
+                      {game.phase === "play"
+                        ? "交战中"
+                        : f.kind === "control"
+                          ? "已控制"
+                          : "已回收"}
+                    </span>
                   </div>
                 ) : f.cards.length ? (
                   f.cards.map((c, j) => (

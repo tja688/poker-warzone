@@ -55,7 +55,7 @@ test("desktop: manual absorb, save/resume, rules, complete AI match", async ({
   await saveFixture(page, game);
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
-  await page.goto("/");
+  await page.goto("./");
   await expect(
     page.getByRole("heading", { name: "每张牌，都有去处。" }),
   ).toBeVisible();
@@ -92,7 +92,7 @@ test("phone and tablet: swap selection, legal confirmation, no overflow, reset",
   const state = swapGame();
   await saveFixture(page, state);
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("/");
+  await page.goto("./");
   await page.getByRole("button", { name: "换牌", exact: true }).click();
   await page.locator(".target-options button").last().click();
   await expect(page.getByRole("button", { name: /确认换牌/ })).toBeEnabled();
@@ -132,7 +132,7 @@ test("simulation worker: batch stats, export JSON, cancellation", async ({
 }) => {
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
-  await page.goto("/");
+  await page.goto("./");
   await page.getByRole("button", { name: "模拟实验室", exact: true }).click();
   await page.getByLabel("模拟场数").fill("100");
   await page.getByRole("button", { name: "开始批量模拟" }).click();
