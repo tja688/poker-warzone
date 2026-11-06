@@ -1,0 +1,17 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "overused-font",
+        "value": "geist",
+        "files": [
+          "src/index.css"
+        ],
+        "createdAt": "2026-11-06T09:54:06.848Z",
+        "reason": "Agent decision: intentional self-hosted Nova UI type and card numerals for a game-first playtest; Chinese display text uses the existing CJK stack. Keep the shipped interface consistent."
+      }
+    ]
+  }
+}
