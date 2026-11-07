@@ -15,6 +15,9 @@ export function PlayingCard({
   small = false,
   ghost = false,
   shared = true,
+  faceDown = false,
+  slot,
+  badge,
 }: {
   card?: Card;
   selected?: boolean;
@@ -23,8 +26,38 @@ export function PlayingCard({
   small?: boolean;
   ghost?: boolean;
   shared?: boolean;
+  faceDown?: boolean;
+  slot?: string;
+  badge?: string;
 }) {
   const reduce = useReducedMotion();
+  if (faceDown) {
+    const props = {
+      className: `playing-card card-back ${selected ? "selected" : ""} ${small ? "small" : ""} ${ghost ? "ghost-card" : ""}`,
+      layoutId: shared && !ghost && !reduce && slot ? `slot-${slot}` : undefined,
+      "data-slot": slot,
+      initial: reduce ? (false as const) : { opacity: 0.6, scale: 0.92 },
+      animate: { opacity: ghost ? 0.48 : 1, scale: 1, y: selected ? -9 : 0 },
+      transition: { type: "spring" as const, stiffness: 440, damping: 32 },
+      style: { borderRadius: "7px" },
+    };
+    const mark = <span className="card-back-mark" aria-hidden="true" />;
+    return onClick ? (
+      <CardButton
+        {...props}
+        variant="ghost"
+        disabled={disabled}
+        onClick={onClick}
+        aria-label="暗牌"
+      >
+        {mark}
+      </CardButton>
+    ) : (
+      <motion.div {...props} aria-label="暗牌">
+        {mark}
+      </motion.div>
+    );
+  }
   if (!card)
     return (
       <div
@@ -47,6 +80,7 @@ export function PlayingCard({
       <span className="card-bottom" aria-hidden="true">
         {cardText(card)}
       </span>
+      {badge && <em className="card-badge">{badge}</em>}
     </>
   );
   const props = {

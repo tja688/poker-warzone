@@ -1,7 +1,7 @@
 {
   "name": "poker-warzone",
   "private": true,
-  "version": "0.2.0",
+  "version": "0.3.0",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
@@ -9,6 +9,7 @@
     "preview": "vite preview --host 127.0.0.1",
     "test": "tsx --test src/game/*.test.ts",
     "simulate": "tsx scripts/simulate.ts",
+    "scan:v03": "tsx scripts/scan-v03.ts",
     "test:e2e": "playwright test"
   },
   "dependencies": {

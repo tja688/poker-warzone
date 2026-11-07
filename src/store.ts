@@ -8,6 +8,8 @@ import {
   type GameState,
   type Strategy,
 } from "./game/engine";
+import { freshSeed } from "./seed";
+export { freshSeed };
 
 const SAVE_KEY = "poker-warzone-v1";
 const AI_KEY = "poker-warzone-ai-v1";
@@ -18,9 +20,6 @@ function loadStrategy(): Strategy {
       return value;
   } catch {}
   return "strategic";
-}
-export function freshSeed() {
-  return Math.random().toString(36).slice(2, 10).toUpperCase();
 }
 function loadGame(): GameState {
   try {

@@ -41,7 +41,7 @@ async function load(page: Page, game: GameState) {
       localStorage.setItem("poker-warzone-v1", JSON.stringify(s));
     localStorage.setItem("warzone-sound", "off");
   }, game);
-  await page.goto("./");
+  await page.goto("./?rules=v0.1");
 }
 async function fits(page: Page) {
   const errors = await page.evaluate(() => {
@@ -52,7 +52,7 @@ async function fits(page: Page) {
     )
       failures.push("document scrolls");
     for (const el of document.querySelectorAll(
-      ".game-header, .playing-card, .control-stack, .action-dock, .confirm-action, .result-dock",
+      ".game-header, .playing-card, .control-stack, .action-dock, .confirm-action, .result-dock, .rules-switch",
     )) {
       const r = el.getBoundingClientRect();
       if (

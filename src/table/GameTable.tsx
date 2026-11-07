@@ -27,6 +27,8 @@ import {
   type GameState,
 } from "../game/engine";
 import { freshSeed, useGame } from "../store";
+import type { RulesVersion } from "../rules";
+import { RulesSwitch } from "./RulesSwitch";
 import { FieldStrip } from "./FieldStrip";
 import { ActionDock } from "./ActionDock";
 import { useSelection } from "./useSelection";
@@ -45,7 +47,13 @@ function readSound() {
 
 /** Match lifetime controller: AI scheduling, sound and overlays live here.
  * TurnView holds only the current selection; rules and persistence stay in store. */
-export function GameTable() {
+export function GameTable({
+  rules,
+  onRules,
+}: {
+  rules: RulesVersion;
+  onRules: (rules: RulesVersion) => void;
+}) {
   const { game, strategy, act, advance, restart, error, setError } = useGame();
   const [help, setHelp] = useState(false),
     [reset, setReset] = useState(false);
@@ -148,6 +156,7 @@ export function GameTable() {
           <span>对手</span>
         </div>
         <div className="header-actions">
+          <RulesSwitch value={rules} onChange={onRules} />
           <Button
             variant="ghost"
             size="icon"

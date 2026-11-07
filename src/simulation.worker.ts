@@ -4,14 +4,32 @@ import {
   simulateOne,
   type SimulationConfig,
 } from "./game/simulation";
-self.onmessage = async (event: MessageEvent<SimulationConfig>) => {
+import {
+  createSimulationResult03,
+  simulateOne03,
+  type SimulationConfig03,
+  type SimulationResult03,
+} from "./game/simulation-v03";
+import type { SimulationResult } from "./game/simulation";
+
+type Job = SimulationConfig | SimulationConfig03;
+type Report = SimulationResult | SimulationResult03;
+
+function is03(job: Job): job is SimulationConfig03 {
+  return "setup" in job;
+}
+
+self.onmessage = async (event: MessageEvent<Job>) => {
   const config = event.data;
-  const result = createSimulationResult(config);
+  const result: Report = is03(config)
+    ? createSimulationResult03(config)
+    : createSimulationResult(config);
   const start = performance.now();
   let lastUpdate = start;
   try {
     for (let i = 0; i < config.games; i++) {
-      simulateOne(config, i, result);
+      if (is03(config)) simulateOne03(config, i, result as SimulationResult03);
+      else simulateOne(config, i, result as SimulationResult);
       if (performance.now() - lastUpdate > 120 || i === config.games - 1) {
         result.durationMs = performance.now() - start;
         self.postMessage({

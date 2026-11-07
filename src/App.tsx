@@ -1,6 +1,10 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useState } from "react";
 import { MotionConfig } from "motion/react";
-import { GameTable } from "./table/GameTable";
+import { GameTable03 } from "./table/GameTable03";
+import { readRules, writeRules, type RulesVersion } from "./rules";
+const ClassicTable = lazy(() =>
+  import("./table/GameTable").then((mod) => ({ default: mod.GameTable })),
+);
 const Lab = lazy(() => import("./Lab"));
 // Research tools have a separate URL and bundle; the game has no tool navigation.
 export default function App() {
@@ -16,12 +20,30 @@ export default function App() {
         </Suspense>
       </main>
     );
+  return <Tables />;
+}
+
+function Tables() {
+  const [rules, setRules] = useState(readRules);
+  const choose = (next: RulesVersion) => {
+    writeRules(next);
+    const url = new URL(location.href);
+    url.searchParams.set("rules", next);
+    history.replaceState(null, "", url);
+    setRules(next);
+  };
   return (
     <MotionConfig
       reducedMotion="user"
       transition={{ type: "spring", stiffness: 420, damping: 34 }}
     >
-      <GameTable />
+      <Suspense fallback={null}>
+        {rules === "v0.1" ? (
+          <ClassicTable rules={rules} onRules={choose} />
+        ) : (
+          <GameTable03 rules={rules} onRules={choose} />
+        )}
+      </Suspense>
     </MotionConfig>
   );
 }

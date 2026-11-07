@@ -19,6 +19,7 @@
 | 存档与局状态发布 | `src/store.ts` | 重新载入、损坏存档、无存储权限 |
 | 布局与适配 | `src/index.css` | 文档无滚动，控件完整显示且互不遮挡 |
 | 模拟指标 | `src/game/simulation.ts` | 原有统计分母与规则断言 |
+| v0.3 模拟指标 | `src/game/simulation-v03.ts`、`scripts/simulate.ts`、`scripts/scan-v03.ts` | 完整场分母、先到三胜、暗牌不进牌桌 |
 | 浏览器批量模拟 | `src/Lab.tsx`、`src/simulation.worker.ts`、`src/styles/lab.css` | `?lab` 的运行、停止、导出 |
 
 `App.tsx` 只分流游戏与研究工具。`components/ui` 是现有 shadcn/Radix 原语，避免把规则逻辑放进公共按钮/弹窗。卡牌、场地和牌桌是游戏专用组件；动画统一使用 Motion，图标 Lucide，共享状态 Zustand。
@@ -60,6 +61,8 @@
 局状态使用 `poker-warzone-v1`，AI 风格旧设置使用 `poker-warzone-ai-v1`，声音使用 `warzone-sound`。v0.2 只重构界面，保留已有规则存档。自动载入后会执行 `assertInvariants`，存档损坏时开新局；浏览器拒绝存储不影响本次游玩。
 
 未来规则或数据结构不兼容时，选择明确迁移或新的 SAVE_KEY，并解释旧局如何处理。不要让旧局在新规则下悄悄继续。草稿、音频上下文、动画坐标及 AI 定时器都不属于存档。
+
+v0.3 使用单独的 `poker-warzone-v03`。读档若带有筹码字段、阶段不是行动或结算，或没有 `core`，就新开一局 v0.3，不把 `poker-warzone-v1` 拿来继续。规则选择记在 `poker-warzone-rules`。切换规则只改当前显示的牌桌，两份进行中的存档都留着。当前 v0.3 没有赌注，胜负是先到三胜，盖牌保留。
 
 ## 适配与验收
 

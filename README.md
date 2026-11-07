@@ -1,8 +1,8 @@
 # 扑克战区
 
-[开始试玩](https://tja688.github.io/poker-warzone/) · [规则原案](docs/rules-v0.1.md) · [开发修改地图](docs/architecture.md)
+[开始试玩](https://tja688.github.io/poker-warzone/?rules=v0.3) · [经典](https://tja688.github.io/poker-warzone/?rules=v0.1) · [暗牌规则](docs/rules-v0.3.md) · [开发修改地图](docs/architecture.md)
 
-一副扑克，五个战区，先赢三局。双方明牌，选择资源牌逐步组成更强的牌型。体验版本 **v0.2**，规则保持原案 **v0.1**。
+默认是暗牌 v0.3。手牌和战区暗牌盖住，先赢三个战区。没有筹码和下注。页头可以换回经典 v0.1。
 
 ![牌桌](docs/screenshots/desktop.png)
 

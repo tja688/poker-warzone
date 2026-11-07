@@ -15,11 +15,30 @@ import {
 } from "./components/ui/native-select";
 import { HAND_NAMES, type Strategy } from "./game/engine";
 import type { SimulationConfig, SimulationResult } from "./game/simulation";
+import {
+  ANTE_ROWS,
+  HIDDEN_SLOTS,
+  MULTIPLIERS,
+  policyByName,
+  policyName,
+  SIM_SAMPLES,
+  STARTING_CHIPS,
+  makeSetup,
+  type SimPolicyName,
+  type SimulationConfig03,
+  type SimulationResult03,
+} from "./game/simulation-v03";
+import { policyLabels, Results03, V03Setup } from "./lab-v03-panels";
 const names: Record<Strategy, string> = {
   random: "随机",
   greedy: "贪心",
   strategic: "策略",
 };
+function isV03(
+  result: SimulationResult | SimulationResult03,
+): result is SimulationResult03 {
+  return "rules" in result;
+}
 const pct = (n: number, d: number) =>
   d ? `${((100 * n) / d).toFixed(1)}%` : "—";
 const fmt = (n: number) => n.toLocaleString("zh-CN");
@@ -40,11 +59,22 @@ function interval(n: number, d: number) {
   return `${(100 * (center - half)).toFixed(1)}–${(100 * (center + half)).toFixed(1)}%`;
 }
 export default function Lab() {
+  const [rules, setRules] = useState<"v0.1" | "v0.3">("v0.1");
   const [games, setGames] = useState("1000");
   const [seed, setSeed] = useState("WARZONE-01");
   const [a, setA] = useState<Strategy>("greedy");
   const [b, setB] = useState<Strategy>("greedy");
-  const [result, setResult] = useState<SimulationResult | null>(null);
+  const [policyA, setPolicyA] = useState<SimPolicyName>("balanced");
+  const [policyB, setPolicyB] = useState<SimPolicyName>("balanced");
+  const [privateHands, setPrivateHands] = useState(true);
+  const [hiddenSlots, setHiddenSlots] = useState<(typeof HIDDEN_SLOTS)[number]>(2);
+  const [multiplier, setMultiplier] = useState<(typeof MULTIPLIERS)[number]>(2);
+  const [antes, setAntes] = useState(ANTE_ROWS[1].join(","));
+  const [startingChips, setStartingChips] =
+    useState<(typeof STARTING_CHIPS)[number]>(10);
+  const [result, setResult] = useState<
+    SimulationResult | SimulationResult03 | null
+  >(null);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState("");
   const [stopped, setStopped] = useState(false);
@@ -70,11 +100,25 @@ export default function Lab() {
     setResult(null);
     setError("");
     setStopped(false);
-    const config: SimulationConfig = {
+    const shared = {
       games: count,
       seed: seed.trim() || "WARZONE-01",
-      strategies: [a, b],
     };
+    const config: SimulationConfig | SimulationConfig03 =
+      rules === "v0.1"
+        ? { ...shared, strategies: [a, b] }
+        : {
+            ...shared,
+            samples: SIM_SAMPLES,
+            setup: makeSetup({
+              privateHands,
+              hiddenSlots,
+              multiplier,
+              antes: antes.split(",").map(Number),
+              startingChips,
+            }),
+            policies: [policyByName(policyA), policyByName(policyB)],
+          };
     w.onmessage = (e) => {
       if (e.data.result) setResult(e.data.result);
       if (e.data.type === "done") {
@@ -101,6 +145,40 @@ export default function Lab() {
   }
   function csv() {
     if (!result) return;
+    if (isV03(result)) {
+      const setup = result.config.setup;
+      const rows = [
+        ["metric", "value"],
+        ["rules", "v0.3"],
+        ["seed", result.config.seed],
+        ["policy_a", policyName(result.config.policies[0])],
+        ["policy_b", policyName(result.config.policies[1])],
+        ["samples", result.config.samples],
+        ["privateHands", setup.privateHands],
+        ["hiddenSlots", setup.hiddenSlots],
+        ["multiplier", setup.multiplier],
+        ["antes", setup.antes.join(",")],
+        ["startingChips", setup.startingChips],
+        ["cap", setup.cap],
+        ["requested", result.config.games],
+        ...Object.entries(result)
+          .filter(([, v]) => typeof v === "number")
+          .map(([k, v]) => [k, v]),
+        ["wins_a", result.wins[0]],
+        ["wins_b", result.wins[1]],
+      ];
+      download(
+        `poker-warzone-v03-${result.config.seed.replace(/[^a-zA-Z0-9_-]/g, "_")}.csv`,
+        "\uFEFF" +
+          rows
+            .map((r) =>
+              r.map((v) => `"${String(v).replaceAll('"', '""')}"`).join(","),
+            )
+            .join("\n"),
+        "text/csv;charset=utf-8",
+      );
+      return;
+    }
     const rows = [
       ["metric", "value"],
       ["seed", result.config.seed],
@@ -138,6 +216,25 @@ export default function Lab() {
           <FlaskConical size={19} />
         </div>
         <p className="panel-intro">先用相同策略观察规则，再比较不同 AI。</p>
+        <label className="form-label" htmlFor="lab-rules">
+          规则
+        </label>
+        <NativeSelect
+          id="lab-rules"
+          value={rules}
+          disabled={running}
+          onChange={(e) => {
+            const next = e.target.value;
+            if (next === "v0.1" || next === "v0.3") {
+              setRules(next);
+              setResult(null);
+              setStopped(false);
+            }
+          }}
+        >
+          <NativeSelectOption value="v0.1">经典 v0.1</NativeSelectOption>
+          <NativeSelectOption value="v0.3">暗牌筹码 v0.3</NativeSelectOption>
+        </NativeSelect>
         <label className="form-label" htmlFor="games">
           模拟场数
         </label>
@@ -163,6 +260,7 @@ export default function Lab() {
             </Button>
           ))}
         </div>
+        {rules === "v0.1" ? (
         <div className="strategy-pair">
           {(
             [
@@ -189,6 +287,25 @@ export default function Lab() {
             </div>
           ))}
         </div>
+        ) : (
+          <V03Setup
+            running={running}
+            policyA={policyA}
+            policyB={policyB}
+            setPolicyA={setPolicyA}
+            setPolicyB={setPolicyB}
+            privateHands={privateHands}
+            setPrivateHands={setPrivateHands}
+            hiddenSlots={hiddenSlots}
+            setHiddenSlots={setHiddenSlots}
+            multiplier={multiplier}
+            setMultiplier={setMultiplier}
+            antes={antes}
+            setAntes={setAntes}
+            startingChips={startingChips}
+            setStartingChips={setStartingChips}
+          />
+        )}
         <label className="form-label" htmlFor="lab-seed">
           模拟种子
         </label>
@@ -200,7 +317,9 @@ export default function Lab() {
           onChange={(e) => setSeed(e.target.value)}
         />
         <p className="fine-print">
-          同种子、同策略、同场数，得到相同结果。大局首轮先手独立随机。
+          {rules === "v0.1"
+            ? "同种子、同策略、同场数，得到相同结果。大局首轮先手独立随机。"
+            : `同种子、同策略、同配置、同抽样，得到相同结果。抽样 ${SIM_SAMPLES} 次。牌桌对局抽样 32 次。封顶 8。透视只在模拟里可选。`}
         </p>
         <Button className="primary-action" onClick={running ? stop : start}>
           {running ? <Pause size={16} /> : <Play size={16} />}{" "}
@@ -211,19 +330,39 @@ export default function Lab() {
             {error}
           </p>
         )}
-        <div className="strategy-notes">
-          <h3>三种对手，三种思路</h3>
-          <p>
-            <b>随机</b> 从所有合法操作中选择，作为基线。
-          </p>
-          <p>
-            <b>贪心</b> 追求眼前牌型，优先吸入可用控制牌；对应策划案的基准思路。
-          </p>
-          <p>
-            <b>策略</b> 结合成牌潜力、对手明牌、控制区保留与选择性弃牌。
-          </p>
-          <p>三种 AI 均不读取牌库顺序。策略 AI 是启发式，强弱以实测为准。</p>
-        </div>
+        {rules === "v0.1" ? (
+          <div className="strategy-notes">
+            <h3>三种对手，三种思路</h3>
+            <p>
+              <b>随机</b> 从所有合法操作中选择，作为基线。
+            </p>
+            <p>
+              <b>贪心</b>{" "}
+              追求眼前牌型，优先吸入可用控制牌；对应策划案的基准思路。
+            </p>
+            <p>
+              <b>策略</b> 结合成牌潜力、对手明牌、控制区保留与选择性弃牌。
+            </p>
+            <p>三种 AI 均不读取牌库顺序。策略 AI 是启发式，强弱以实测为准。</p>
+          </div>
+        ) : (
+          <div className="strategy-notes">
+            <h3>六种策略，透视只在这里</h3>
+            <p>
+              <b>稳健</b>、<b>均衡</b>、<b>诈唬</b>{" "}
+              用不同的跟注松紧和诈唬频率。
+            </p>
+            <p>
+              <b>跟注站</b> 永远跟注，从不加注，不撤退。
+            </p>
+            <p>
+              <b>随机下注</b> 只随机表态，爬山与均衡相同。
+            </p>
+            <p>
+              <b>透视</b> 读到对手的暗牌和手牌。牌桌不能选它。
+            </p>
+          </div>
+        )}
       </aside>
       <section className="lab-results" aria-label="模拟结果">
         <div className="lab-result-header">
@@ -239,8 +378,12 @@ export default function Lab() {
             </h2>
             <p>
               {result
-                ? `${names[result.config.strategies[0]]} A 对 ${names[result.config.strategies[1]]} B · ${fmt(n)} / ${fmt(result.config.games)} 场 · ${(result.durationMs / 1000).toFixed(1)} 秒`
-                : "设置两位 AI，让它们在同一套规则下交手。"}
+                ? isV03(result)
+                  ? `${policyLabels[policyName(result.config.policies[0])]} A 对 ${policyLabels[policyName(result.config.policies[1])]} B · 抽样 ${result.config.samples} · ${fmt(n)} / ${fmt(result.config.games)} 场 · ${(result.durationMs / 1000).toFixed(1)} 秒`
+                  : `${names[result.config.strategies[0]]} A 对 ${names[result.config.strategies[1]]} B · ${fmt(n)} / ${fmt(result.config.games)} 场 · ${(result.durationMs / 1000).toFixed(1)} 秒`
+                : rules === "v0.3"
+                  ? "设置两位策略，看暗牌和赌注是否改变胜负。"
+                  : "设置两位 AI，让它们在同一套规则下交手。"}
             </p>
           </div>
           {result && !running && (
@@ -281,6 +424,9 @@ export default function Lab() {
           />
         </div>
         {result && n > 0 ? (
+          isV03(result) ? (
+            <Results03 result={result} />
+          ) : (
           <>
             <div className="win-overview">
               <div>
@@ -389,6 +535,7 @@ export default function Lab() {
               在这些种子下的表现；不能直接证明人类玩家体验或规则的绝对平衡。统计分母包含平局，平局单独显示。大量模拟在手机上需要更长时间，可随时停止并导出已完成样本。
             </p>
           </>
+          )
         ) : (
           <div className="lab-empty">
             <div className="empty-cards">
@@ -398,9 +545,15 @@ export default function Lab() {
             </div>
             <h3>每一次发牌，都是一个新样本。</h3>
             <p>
-              从 1,000 场贪心对贪心开始，观察胜者的资源奖励
-              <br className="desktop-only" />
-              是否抵消了普通场地减少带来的影响。
+              {rules === "v0.3" ? (
+                "从 1,000 场均衡对均衡开始，看暗牌和赌注是否改变谁拿走筹码。"
+              ) : (
+                <>
+                  从 1,000 场贪心对贪心开始，观察胜者的资源奖励
+                  <br className="desktop-only" />
+                  是否抵消了普通场地减少带来的影响。
+                </>
+              )}
             </p>
           </div>
         )}
