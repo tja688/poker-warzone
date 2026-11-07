@@ -1,7 +1,7 @@
 {
   "name": "poker-warzone",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
@@ -17,6 +17,7 @@
     "clsx": "^2.1.1",
     "cn": "^0.5.2",
     "lucide-react": "^1.70.0",
+    "motion": "^14.10.1",
     "radix-ui": "^1.8.1",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",

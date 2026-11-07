@@ -1,7 +1,7 @@
+import { chooseAction } from "./ai";
 import {
   applyAction,
   assertInvariants,
-  chooseAction,
   createGame,
   nextRound,
   type Strategy,

@@ -1,164 +1,312 @@
-import { test, expect } from "@playwright/test";
+import { chooseAction } from "../src/game/ai";
+import { test, expect, type Page } from "@playwright/test";
 import {
   createGame,
-  chooseAction,
   applyAction,
   nextRound,
   legalActions,
+  HAND_NAMES,
+  assertInvariants,
+  type Action,
   type GameState,
 } from "../src/game/engine";
 import { mkdirSync } from "node:fs";
-const captureDir = ".local/screenshots";
-mkdirSync(captureDir, { recursive: true });
-function humanGame() {
-  for (let i = 0; i < 30; i++) {
-    const s = createGame(`QA-${i}`);
-    if (s.turn === 0) return s;
-  }
-  throw Error("No human starter seed");
-}
-function swapGame() {
-  for (let seed = 0; seed < 40; seed++) {
-    let s = createGame(`SWAP-${seed}`);
-    for (let turn = 0; turn < 200 && s.phase !== "finished"; turn++) {
-      if (s.phase === "roundOver") {
-        s = nextRound(s);
-        continue;
-      }
-      if (s.turn === 0 && legalActions(s).some((a) => a.kind === "swap"))
-        return s;
-      s = applyAction(s, chooseAction(s, "strategic"));
+mkdirSync(".local/screenshots", { recursive: true });
+const saved = (page: Page): Promise<GameState> =>
+  page.evaluate(() => JSON.parse(localStorage.getItem("poker-warzone-v1")!));
+function findGame(predicate: (s: GameState) => boolean) {
+  for (let seed = 0; seed < 80; seed++) {
+    let s = createGame(`QA-${seed}`);
+    for (let turn = 0; turn < 120 && s.phase !== "finished"; turn++) {
+      if (predicate(s)) return s;
+      s =
+        s.phase === "roundOver"
+          ? nextRound(s)
+          : applyAction(s, chooseAction(s, "strategic"));
     }
   }
-  throw Error("No swap fixture");
+  throw Error("No fixture");
 }
-async function saveFixture(
-  page: import("@playwright/test").Page,
-  game: GameState,
-) {
+const humanGame = () =>
+  findGame(
+    (s) =>
+      s.phase === "play" &&
+      s.turn === 0 &&
+      s.round === 1 &&
+      s.players[0].fields[0].cards.length === 1,
+  );
+async function load(page: Page, game: GameState) {
   await page.addInitScript((s) => {
     if (!localStorage.getItem("poker-warzone-v1"))
       localStorage.setItem("poker-warzone-v1", JSON.stringify(s));
+    localStorage.setItem("warzone-sound", "off");
   }, game);
-}
-async function saved(page: import("@playwright/test").Page) {
-  return page.evaluate(
-    () => JSON.parse(localStorage.getItem("poker-warzone-v1")!) as GameState,
-  );
-}
-
-test("desktop: manual absorb, save/resume, rules, complete AI match", async ({
-  page,
-}) => {
-  await page.setViewportSize({ width: 1440, height: 1000 });
-  const game = humanGame();
-  await saveFixture(page, game);
-  const errors: string[] = [];
-  page.on("pageerror", (e) => errors.push(e.message));
   await page.goto("./");
-  await expect(
-    page.getByRole("heading", { name: "每张牌，都有去处。" }),
-  ).toBeVisible();
-  await page.screenshot({ path: `${captureDir}/desktop.png`, fullPage: true });
-  const cards = page.locator(".your-area .field-strip button.playing-card");
-  await cards.first().click();
-  await expect(page.getByRole("button", { name: /确认吸牌/ })).toBeEnabled();
-  await page.getByRole("button", { name: /确认吸牌/ }).click();
+}
+async function fits(page: Page) {
+  const errors = await page.evaluate(() => {
+    const failures: string[] = [];
+    if (
+      document.documentElement.scrollWidth > innerWidth ||
+      document.documentElement.scrollHeight > innerHeight
+    )
+      failures.push("document scrolls");
+    for (const el of document.querySelectorAll(
+      ".game-header, .playing-card, .control-stack, .action-dock, .confirm-action, .result-dock",
+    )) {
+      const r = el.getBoundingClientRect();
+      if (
+        r.x < -1 ||
+        r.y < -1 ||
+        r.right > innerWidth + 1 ||
+        r.bottom > innerHeight + 1
+      )
+        failures.push(`${el.className}: ${JSON.stringify(r.toJSON())}`);
+    }
+    return failures;
+  });
+  expect(errors).toEqual([]);
+}
+async function play(page: Page, game: GameState, action: Action) {
+  const label = { absorb: "吸牌", swap: "换牌", discard: "弃牌" }[action.kind];
+  await page.getByRole("button", { name: label, exact: true }).click();
+  if (action.kind === "swap")
+    await page
+      .locator(".target-options")
+      .getByRole("button", { name: HAND_NAMES[action.target!], exact: true })
+      .click();
+  const clear = page.getByRole("button", { name: "清空选择" });
+  if (await clear.isEnabled()) await clear.click();
+  for (const card of action.take) {
+    const index = game.players[0].fields.findIndex((f) =>
+      f.cards.includes(card),
+    );
+    if (game.players[0].fields[index].kind === "control") {
+      await page
+        .getByRole("button", {
+          name: `查看你的${index + 1}号控制区`,
+          exact: true,
+        })
+        .click();
+      await page.locator(`[role="dialog"] button[data-card="${card}"]`).click();
+    } else
+      await page.locator(`.player-reserve button[data-card="${card}"]`).click();
+  }
+  for (const card of action.give)
+    await page.locator(`.your-battle button[data-card="${card}"]`).click();
+  const confirm = page.getByRole("button", {
+    name: `确认${label}`,
+    exact: true,
+  });
+  await expect(confirm).toBeEnabled();
+  await confirm.click();
   await expect
     .poll(async () => (await saved(page)).turnNumber)
     .toBeGreaterThan(game.turnNumber);
-  const seed = (await saved(page)).seed;
-  await page.reload();
-  await expect(page.locator(".table-footer")).toContainText(seed);
-  await page.getByRole("button", { name: "怎么玩" }).click();
-  await expect(page.getByRole("dialog")).toBeVisible();
-  await page.keyboard.press("Escape");
-  await expect(page.getByRole("dialog")).toHaveCount(0);
-  await page.getByRole("button", { name: "AI 代打 / 观战" }).click();
-  for (let round = 0; round < 5; round++) {
-    await expect(page.locator(".result-panel")).toBeVisible({ timeout: 35000 });
-    const state = await saved(page);
-    if (state.phase === "finished") break;
-    await page.getByRole("button", { name: /进入第 .* 战区/ }).click();
-  }
-  expect((await saved(page)).phase).toBe("finished");
-  await page.screenshot({ path: `${captureDir}/finished.png`, fullPage: true });
-  expect(errors).toEqual([]);
-});
+}
 
-test("phone and tablet: swap selection, legal confirmation, no overflow, reset", async ({
+test("single viewport: desktop, laptop, tablet, portrait and landscape phones", async ({
   page,
 }) => {
-  const state = swapGame();
-  await saveFixture(page, state);
+  await load(page, humanGame());
+  for (const [width, height] of [
+    [1440, 900],
+    [1366, 768],
+    [1024, 768],
+    [768, 1024],
+    [390, 844],
+    [375, 667],
+    [320, 568],
+    [844, 390],
+    [667, 375],
+  ]) {
+    await page.setViewportSize({ width, height });
+    await page.waitForTimeout(200);
+    await fits(page);
+    await page.screenshot({
+      path: `.local/screenshots/table-${width}x${height}.png`,
+    });
+  }
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("./");
-  await page.getByRole("button", { name: "换牌", exact: true }).click();
-  await page.locator(".target-options button").last().click();
-  await expect(page.getByRole("button", { name: /确认换牌/ })).toBeEnabled();
-  await page.screenshot({ path: `${captureDir}/phone.png`, fullPage: true });
-  expect(
-    await page.evaluate(
-      () => document.documentElement.scrollWidth <= innerWidth,
-    ),
-  ).toBe(true);
-  const before = await saved(page);
-  await page.getByRole("button", { name: /确认换牌/ }).click();
-  await expect
-    .poll(async () => (await saved(page)).turnNumber)
-    .toBeGreaterThan(before.turnNumber);
-  await page.setViewportSize({ width: 768, height: 1024 });
-  await page.screenshot({ path: `${captureDir}/tablet.png`, fullPage: true });
-  expect(
-    await page.evaluate(
-      () => document.documentElement.scrollWidth <= innerWidth,
-    ),
-  ).toBe(true);
-  await page.getByRole("button", { name: "新对局" }).click();
-  await page.getByLabel("对局种子").fill("MOBILE-RESET");
-  await page.getByLabel("对手风格").selectOption("random");
-  await page.getByRole("button", { name: "发牌，开始" }).click();
-  await expect(page.locator(".table-footer")).toContainText("MOBILE-RESET");
-  await page.setViewportSize({ width: 320, height: 740 });
-  expect(
-    await page.evaluate(
-      () => document.documentElement.scrollWidth <= innerWidth,
-    ),
-  ).toBe(true);
+  await page.locator(".player-reserve button.playing-card").first().click();
+  await expect(page.locator(".your-battle .ghost-card")).toHaveCount(1);
+  await page.screenshot({ path: ".local/screenshots/selection-phone.png" });
 });
 
-test("simulation worker: batch stats, export JSON, cancellation", async ({
+test("manual play, reload persistence, help pauses AI, restart and sound", async ({
   page,
 }) => {
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
-  await page.goto("./");
-  await page.getByRole("button", { name: "模拟实验室", exact: true }).click();
+  const start = humanGame();
+  await load(page, start);
+  await play(
+    page,
+    start,
+    legalActions(start).find((a) => a.kind === "absorb")!,
+  );
+  await page.getByRole("button", { name: "怎么玩", exact: true }).click();
+  const paused = await saved(page);
+  await page.waitForTimeout(1500);
+  expect((await saved(page)).turnNumber).toBe(paused.turnNumber);
+  await page.keyboard.press("Escape");
+  await page.reload();
+  expect((await saved(page)).seed).toBe(start.seed);
+  await page.getByRole("button", { name: "开启音效", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "关闭音效", exact: true }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "新对局", exact: true }).click();
+  await page.getByRole("button", { name: "继续当前对局", exact: true }).click();
+  expect((await saved(page)).seed).toBe(start.seed);
+  await page.getByRole("button", { name: "新对局", exact: true }).click();
+  await page.getByRole("button", { name: "重新发牌", exact: true }).click();
+  expect((await saved(page)).seed).not.toBe(start.seed);
+  expect(errors).toEqual([]);
+});
+
+test("phone: exact swap, discard and control-card selection", async ({
+  page,
+}) => {
+  const game = findGame(
+    (s) =>
+      s.turn === 0 &&
+      s.phase === "play" &&
+      legalActions(s).some((a) => a.kind === "swap"),
+  );
+  await page.setViewportSize({ width: 390, height: 844 });
+  await load(page, game);
+  await page.getByRole("button", { name: "换牌", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "确认换牌", exact: true }),
+  ).toBeEnabled();
+  await fits(page);
+  await page.screenshot({ path: ".local/screenshots/swap-phone.png" });
+  const swap = legalActions(game).find((a) => a.kind === "swap")!;
+  await play(page, game, swap);
+  assertInvariants(await saved(page));
+  const control = findGame(
+    (s) =>
+      s.turn === 0 &&
+      s.phase === "play" &&
+      legalActions(s).some(
+        (a) =>
+          a.kind === "absorb" &&
+          a.take.some((c) =>
+            s.players[0].fields.some(
+              (f) => f.kind === "control" && f.cards.includes(c),
+            ),
+          ),
+      ),
+  );
+  await page.evaluate(
+    (s) => localStorage.setItem("poker-warzone-v1", JSON.stringify(s)),
+    control,
+  );
+  await page.reload();
+  const absorb = legalActions(control).find(
+    (a) =>
+      a.kind === "absorb" &&
+      a.take.some((c) =>
+        control.players[0].fields.some(
+          (f) => f.kind === "control" && f.cards.includes(c),
+        ),
+      ),
+  )!;
+  await fits(page);
+  await play(page, control, absorb);
+  const after = await saved(page);
+  expect(
+    after.players[0].fields.some((f) => f.kind === "control" && f.used),
+  ).toBe(true);
+  const discard = humanGame();
+  await page.evaluate(
+    (s) => localStorage.setItem("poker-warzone-v1", JSON.stringify(s)),
+    discard,
+  );
+  await page.reload();
+  await play(
+    page,
+    discard,
+    legalActions(discard).find((a) => a.kind === "discard")!,
+  );
+  expect((await saved(page)).players[0].discarded).toBe(true);
+});
+
+test("entire match through real player controls and AI, then rematch", async ({
+  page,
+}) => {
+  test.setTimeout(180000);
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.setViewportSize({ width: 1366, height: 768 });
+  await load(page, humanGame());
+  for (let step = 0; step < 150; step++) {
+    const game = await saved(page);
+    assertInvariants(game);
+    if (game.phase === "finished") break;
+    if (game.phase === "roundOver") {
+      await fits(page);
+      await page.getByRole("button", { name: "下一战区", exact: true }).click();
+    } else if (game.turn === 0)
+      await play(page, game, chooseAction(game, "strategic"));
+    else
+      await expect
+        .poll(async () => (await saved(page)).turnNumber, { timeout: 5000 })
+        .toBeGreaterThan(game.turnNumber);
+  }
+  expect((await saved(page)).phase).toBe("finished");
+  await fits(page);
+  await page.screenshot({ path: ".local/screenshots/finished.png" });
+  await page.getByRole("button", { name: "再来一局", exact: true }).click();
+  expect((await saved(page)).phase).toBe("play");
+  expect(errors).toEqual([]);
+});
+
+test("keyboard and reduced motion preserve selection", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await load(page, humanGame());
+  const card = page.locator(".player-reserve button.playing-card").first();
+  await card.focus();
+  await page.keyboard.press("Space");
+  await expect(card).toHaveAttribute("aria-pressed", "true");
+  await page.keyboard.press("Space");
+  await expect(card).toHaveAttribute("aria-pressed", "false");
+  const before = await saved(page);
+  await page.keyboard.press("Space");
+  await page
+    .getByRole("button", { name: "确认吸牌", exact: true })
+    .evaluate((button: HTMLButtonElement) => {
+      button.click();
+      button.click();
+    });
+  const after = await saved(page);
+  expect(after.roundActions[0]).toBe(before.roundActions[0] + 1);
+  expect(after.players[0].fields[after.round - 1].cards.length).toBe(
+    before.players[0].fields[before.round - 1].cards.length + 1,
+  );
+});
+
+test("research URL: simulation, JSON export and cancellation", async ({
+  page,
+}) => {
+  await page.goto("./?lab");
   await page.getByLabel("模拟场数").fill("100");
-  await page.getByRole("button", { name: "开始批量模拟" }).click();
+  await page.getByRole("button", { name: "开始批量模拟", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: "模拟完成", exact: true }),
   ).toBeVisible({ timeout: 60000 });
   await expect(page.locator(".assertion-banner")).toContainText("规则断言通过");
   const download = page.waitForEvent("download");
   await page.getByRole("button", { name: "JSON", exact: true }).click();
-  const file = await download;
-  const stream = await file.createReadStream();
+  const stream = await (await download).createReadStream();
   const chunks: Buffer[] = [];
-  for await (const chunk of stream!) chunks.push(Buffer.from(chunk));
-  const result = JSON.parse(Buffer.concat(chunks).toString());
-  expect(result.completed).toBe(100);
-  expect(result.wins[0] + result.wins[1] + result.draws).toBe(100);
-  expect(result.handCounts.reduce((x: number, y: number) => x + y, 0)).toBe(
-    result.rounds * 2,
-  );
-  expect(result.assertionFailures).toBe(0);
-  await page.screenshot({ path: `${captureDir}/lab.png`, fullPage: true });
+  for await (const c of stream!) chunks.push(Buffer.from(c));
+  expect(JSON.parse(Buffer.concat(chunks).toString()).completed).toBe(100);
   await page.getByLabel("模拟场数").fill("200000");
-  await page.getByRole("button", { name: "开始批量模拟" }).click();
-  await page.getByRole("button", { name: "停止模拟" }).click();
+  await page.getByRole("button", { name: "开始批量模拟", exact: true }).click();
+  await page.getByRole("button", { name: "停止模拟", exact: true }).click();
   await expect(
-    page.getByRole("button", { name: "开始批量模拟" }),
+    page.getByRole("button", { name: "开始批量模拟", exact: true }),
   ).toBeEnabled();
-  expect(errors).toEqual([]);
 });

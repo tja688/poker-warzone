@@ -1,56 +1,52 @@
-# 扑克战区 · 网页 Playtest
+# 扑克战区
 
-根据 [规则策划案 v0.1](docs/rules-v0.1.md) 制作的单机测试版。完整游戏逻辑与 AI 对局模拟共用一个确定性引擎，无后端、无账号。
+[开始试玩](https://tja688.github.io/poker-warzone/) · [规则原案](docs/rules-v0.1.md) · [开发修改地图](docs/architecture.md)
 
-在线试玩：**https://tja688.github.io/poker-warzone/**
+一副扑克，五个战区，先赢三局。双方明牌，选择资源牌逐步组成更强的牌型。体验版本 **v0.2**，规则保持原案 **v0.1**。
 
-![牌桌界面](docs/screenshots/desktop.png)
+![牌桌](docs/screenshots/desktop.png)
 
 ## 游玩
 
-- 先赢下 3 个战区的玩家获胜。双方桌面全部明牌。
-- **吸牌**：点选普通区或未使用控制区的牌，再确认。战区至多 5 张，每控制区整场仅可吸 1 张。
-- **换牌**：选择更高目标牌型，预选组合可手动调整；换入、换出张数必须等于该目标的最小值，不能只换踢脚。
-- **弃牌**：每小局一次，挑选普通区的任意非空子集；空位在下回合开始补牌。
-- 无合法操作自动卡住，双方卡住后比牌。结算后手动进入下一战区。
-- 手机、平板和电脑均以点选操作，不需要拖拽。可用键盘 Tab / Enter 操作。默认静音，可选轻量提示音。
-- 自动保存到当前浏览器。新对局可指定种子与 AI 风格；同种子和行动顺序能复现相同发牌。AI 代打可以随时接管。
+- 点场地牌选中，再确认吸牌；战区最多五张。
+- 换牌先选目标牌型，界面预选一组合法组合。可切换组合，也可直接点牌调整换入、换出。
+- 每局可弃一次普通牌；空位在自己下回合补满。
+- 控制区可打开查看，每个控制区整场只可吸一张。
+- 双方无合法行动时自动比牌。下一战区手动继续，先到三胜结束。
 
-## 本地运行
+主牌桌占满一个窗口，支持手机横竖屏和平板；卡牌移动、弃牌回库、选中抬牌、结算说明和轻量音效提供反馈。右上角可静音、看规则、重新发牌。支持键盘、减少动态效果及本地自动续局。
 
-Node.js 24：
+## 开发
+
+Node.js 24。安装依赖后启动：
 
 ```sh
 npm ci
 npm run dev
+```
+
+验证入口：
+
+```sh
 npm test
 npm run build
 npm run test:e2e
 ```
 
-开发地址以 Vite 实际输出为准。构建产物 `dist/` 可放在任意静态服务器，资源路径使用相对地址。
+E2E 默认使用本机 Edge，CI 使用 `PLAYWRIGHT_CHANNEL=chromium`。测试截图写入 `.local/screenshots/`。
 
-## 模拟
+下一版从 [AGENTS.md](AGENTS.md) 和 [架构与修改地图](docs/architecture.md) 开始。规则引擎、AI 策略、选牌草稿、牌桌组件、表现反馈和模拟均有独立入口；UI 不复制规则判断。
 
-网页的「模拟实验室」在 Web Worker 中批量运行，可选随机、贪心、策略 AI，支持停止及 CSV / JSON 导出，单批最多 200,000 场。结束或停止后显示已完成场数。
+## 研究工具
 
-命令行不受页面数量输入限制：
+批量模拟移到[独立实验室](https://tja688.github.io/poker-warzone/?lab)，不占用游戏界面。仍支持 Worker 运行、三种 AI、停止及 CSV/JSON 导出。命令行与界面共用同一规则引擎：
 
 ```sh
 npm run simulate -- --games 10000 --seed baseline-01 --a greedy --b greedy --out docs/simulation-baseline.json
-npm run simulate -- --games 1000 --seed compare-01 --a greedy --b strategic --out docs/simulation-comparison.json
 ```
 
-输出大局胜负、首轮先手胜率、上局胜者续局胜率、平均小局数、打满 5 局比例、平局、牌型和操作分布。各概率的分母在实验室明确说明。模拟结论仅反映指定策略与种子，不能替代玩家体验测试。
+AI 的依据与限制见 [AI 说明](docs/ai.md)，本轮验收见 [v0.2 报告](docs/playtest-v0.2.md)。[v0.1 报告](docs/playtest-report.md) 中的统计为当时实际模拟结果。
 
-AI 设计见 [docs/ai.md](docs/ai.md)，验证与实测结果见 [docs/playtest-report.md](docs/playtest-report.md)。
+## 发布
 
-## 部署
-
-推送 `main` 后，GitHub Actions 执行测试与构建，随后部署 GitHub Pages。仓库 Settings → Pages 的发布源为 GitHub Actions。
-
-## 实现边界
-
-按原文采用 A2345、踢脚、花色不分大小、先补牌后洗牌等【默认】处理。策划案 Q1–Q6 保留讨论，本次不加入下注、肉鸽、多人网络或主动跳过规则。
-
-架构：`src/game/engine.ts` 规则与 AI；`src/game/simulation.ts` 批量统计；`src/simulation.worker.ts` 后台模拟；`src/App.tsx` 牌桌；`src/Lab.tsx` 实验室。UI 使用 React、shadcn/ui Nova、Lucide 和 Zustand。没有外部字体或图片请求；字体随构建自托管。
+推送 `main` 后 GitHub Actions 执行测试、构建并部署 Pages。构建产物使用相对资源路径。存档仍沿用原规则版本，已有有效对局可继续；未来不兼容规则的迁移方式见架构文档。

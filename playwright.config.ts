@@ -8,7 +8,7 @@ export default defineConfig({
   use: {
     baseURL: process.env.PLAYTEST_URL || "http://127.0.0.1:5173",
     headless: true,
-    channel: "msedge",
+    channel: process.env.PLAYWRIGHT_CHANNEL || "msedge",
     trace: "retain-on-failure",
   },
   webServer: process.env.PLAYTEST_URL

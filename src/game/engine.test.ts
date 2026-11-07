@@ -1,9 +1,9 @@
+import { chooseAction } from "./ai";
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
   applyAction,
   assertInvariants,
-  chooseAction,
   compareHands,
   createGame,
   evaluate,

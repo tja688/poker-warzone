@@ -1,0 +1,159 @@
+/* Research-only route (?lab). Scrolling is contained here, never on the table. */
+.lab-page {
+  height: 100dvh;
+  overflow: auto;
+  padding: 24px max(20px, calc((100vw - 1200px) / 2));
+  background: #102923;
+}
+.lab-page header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 26px;
+}
+.lab-page h1 {
+  font-size: 22px;
+}
+.lab-layout {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 30px;
+}
+.lab-config,
+.lab-results {
+  min-width: 0;
+}
+.lab-config {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.lab-page h2,
+.lab-page h3 {
+  color: #e4c88a;
+  font-size: 18px;
+  margin: 14px 0;
+}
+.lab-page p,
+.lab-page small {
+  color: #c0ceba;
+  line-height: 1.7;
+  font-size: 12px;
+}
+.form-label {
+  display: block;
+  font-size: 13px;
+  margin-top: 10px;
+}
+.quick-counts,
+.export-actions,
+.strategy-pair {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.strategy-pair > div {
+  flex: 1;
+}
+.lab-page input,
+.lab-page select {
+  background: #214a3c;
+  color: #f2efdf;
+  min-height: 40px;
+  width: 100%;
+}
+.lab-page .primary-action {
+  min-height: 44px;
+  margin: 10px 0;
+}
+.lab-result-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+}
+.win-overview {
+  display: flex;
+  justify-content: space-between;
+  margin: 25px 0 10px;
+}
+.win-overview > div {
+  display: flex;
+  flex-direction: column;
+}
+.win-overview b {
+  font-size: 36px;
+  color: #e4c88a;
+}
+.win-bar {
+  display: flex;
+  height: 14px;
+  overflow: hidden;
+  border-radius: 7px;
+}
+.win-a {
+  background: #e4c88a;
+}
+.win-b {
+  background: #799c88;
+}
+.win-draw {
+  background: #c4c5b4;
+}
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  margin: 28px 0;
+}
+.stat-grid dt {
+  font-size: 12px;
+  color: #bfd0b9;
+}
+.stat-grid dd {
+  font-size: 24px;
+  margin: 5px 0;
+}
+.continuation-stat,
+.assertion-banner {
+  padding: 20px 0;
+  border-top: 1px solid #53705c;
+}
+.continuation-stat > b {
+  font-size: 30px;
+  color: #e4c88a;
+}
+.continuation-detail {
+  font-size: 12px;
+  color: #bfd0b9;
+}
+.distribution-row {
+  display: grid;
+  grid-template-columns: 65px 1fr 55px;
+  gap: 12px;
+  margin: 10px 0;
+  font-size: 12px;
+}
+.distribution-row > div {
+  background: #214a3c;
+}
+.distribution-row > div > span {
+  display: block;
+  background: #c7ba84;
+  height: 100%;
+}
+.assertion-banner {
+  display: flex;
+  gap: 15px;
+  margin-top: 25px;
+}
+.assertion-banner.failed,
+.error-message {
+  color: #f2b8a6;
+}
+@media (max-width: 700px) {
+  .lab-layout {
+    grid-template-columns: 1fr;
+  }
+  .stat-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

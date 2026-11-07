@@ -26,7 +26,7 @@ Delegated by the user's instruction to plan and implement directly: React + Type
 ## Product Principles
 1. 规则与模拟共用一个引擎。
 2. 每次行动可预览、可理解，不允许非法操作。
-3. 玩家优先看到牌局，工具放在次级面板。
+3. 主入口直接进入完整牌桌，一屏可玩；研究工具使用独立路由。
 4. 模拟结果说明策略、样本和断言。
 
 ## Accessibility & Inclusion
@@ -34,3 +34,6 @@ Delegated by the user's instruction to plan and implement directly: React + Type
 
 ## Assumptions
 策划案的【默认】项按原文实现；Q1–Q6 保留为待讨论问题。本轮不加入肉鸽、下注或额外规则。
+
+## 2026-11-07 体验约束
+用户要求快速验证玩法：简约、直观、有游戏质感，窗口不滚动，交互自然且有反馈。主界面不放宣传副标题、冗余注释、代打、建议、种子与实验室导航。保留研究功能到独立 `?lab`；未来多版迭代以规则与表现分层、明确注释和修改地图支持。

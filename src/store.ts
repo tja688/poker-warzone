@@ -47,18 +47,15 @@ function save(game: GameState) {
 interface Store {
   game: GameState;
   strategy: Strategy;
-  auto: boolean;
   error: string;
   act: (a: Action) => void;
   advance: () => void;
   restart: (seed: string, strategy: Strategy) => void;
-  setAuto: (value: boolean) => void;
   setError: (error: string) => void;
 }
 export const useGame = create<Store>((set, get) => ({
   game: loadGame(),
   strategy: loadStrategy(),
-  auto: false,
   error: "",
   act: (a) => {
     try {
@@ -85,8 +82,7 @@ export const useGame = create<Store>((set, get) => ({
     try {
       localStorage.setItem(AI_KEY, strategy);
     } catch {}
-    set({ game, strategy, auto: false, error: "" });
+    set({ game, strategy, error: "" });
   },
-  setAuto: (auto) => set({ auto }),
   setError: (error) => set({ error }),
 }));
